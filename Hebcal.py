@@ -4,53 +4,17 @@ Created on Dec 10, 2018
 @author: elliott
 '''
 
+import argparse
 import datetime
-import urllib2
+import ssl
+import urllib.request
 import json
-
-def populateEmptyYear():
-    
-    daysInMonth = [ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ];
-    
-    days = dict()
-    for m in range(0, 12):
-        for d in range(1, daysInMonth[m]+1):
-            mmyy = "{0:02}-{1:02}".format(m+1, d)
-            days[mmyy] = { "first": 9999, "events": set() }
-    return days    
         
-def fillYear(days, yr, events):
-    
-    url = "https://www.hebcal.com/hebcal/?v=1&cfg=json&year={0}&month=x".format(yr)
-    url += "&maj=on&nx=on&geo=geoname&geonameid=5128581"
-    print url
-    response = urllib2.urlopen(url)
-    
-    data = response.read()
-    jdat = json.loads(data)
-    
-    for item in jdat['items']:
-        if 'Erev' in item['title']:
-            continue
-        if 'Kippur' in item['title']:
-            continue
-        if 'Hashana' in item['title']:
-            continue
-        if 'Tish' in item['title']:
-            continue
-        if 'Purim' in item['title']:
-            continue
-   
-        date = item['date'][5:]
-        if yr < days[date]['first']:
-            days[date]['first'] = yr
-        days[date]['events'].add(item['title'])
-        events.add(item['title'])
-
-def getShabbosTimes():
-    url = "https://www.hebcal.com/hebcal/?v=1&cfg=json&year=2022&month=x&maj=on&c=on&m=50&geo=zip&zip=07666"
-    print url
-    response = urllib2.urlopen(url)
+def getShabbosTimes(yr, zp):
+    ssl._create_default_https_context = ssl._create_unverified_context
+    url = "https://www.hebcal.com/hebcal/?v=1&cfg=json&year={0}&month=x&maj=on&c=on&m=50&geo=zip&zip={1}".format(yr, zp)
+    print(url)
+    response = urllib.request.urlopen(url)
     
     data = response.read()
     jdat = json.loads(data)
@@ -126,31 +90,19 @@ def getShabbosTimes():
             amOff = None
             
         if amOn is None:
-            print "{}|{}|{}|{}".format(d, hlday, pmOn, pmOff)
+            print("{}|{}|{}|{}".format(d, hlday, pmOn, pmOff))
         else:
-            print "{}|{}|{}|{}|{}|{}".format(d, hlday, amOn, amOff, pmOn, pmOff)
+            print("{}|{}|{}|{}|{}|{}".format(d, hlday, amOn, amOff, pmOn, pmOff))
     return times
 
-
 if __name__ == '__main__':
-    
-    getShabbosTimes()
+    parser = argparse.ArgumentParser(description="Generate on/off times for the Keter Torah stoplight")
+    parser.add_argument("-Y", "--year", help="The 4-digit year to use for generating the reports", required=True)
+    parser.add_argument("-Z", "--zipcode", help="The 0-padded 5-digit Zip Code to use for generating the reports", required=True)
+    args = parser.parse_args()
+
+    getShabbosTimes(args.year, args.zipcode)
+
     exit()
-    
-    events = set()
-    days = populateEmptyYear()
-    for yr in range(1900, 2100):
-        print yr
-        fillYear(days, yr, events)
-    
-    nothing = list()
-    for date in sorted(days.keys()):
-        print "{0} - {1} - {2}".format(date, days[date]['first'], sorted(days[date]['events']))
-        if days[date]['first'] == 9999:
-            nothing.append(date)
-            
-    print nothing
-    for e in sorted(events):
-        print e
     
     
